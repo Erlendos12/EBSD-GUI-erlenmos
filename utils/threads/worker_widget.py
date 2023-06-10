@@ -1,5 +1,9 @@
+"""
+Utiltiy for creating the Jobs that are shown in the Job Manager of the main 
+application window
+"""
 import os
-from typing import Callable
+from typing import Callable, Optional
 from datetime import timedelta
 
 from PySide6.QtCore import QThreadPool, Slot, Signal, QElapsedTimer, QTimer, QSize
@@ -100,6 +104,7 @@ class WorkerWidget(QWidget):
         
 
     def setupConnections(self):
+        """Connects class methods to UI signals"""
         # UI
         self.ui.labelJobNumber.setText(f"Job {self.id} | {self.job_title}")
         self.ui.labelJobName.setText(f"{self.job_title}")
@@ -128,12 +133,15 @@ class WorkerWidget(QWidget):
         )
 
     def updateActiveJobs(self):
+        """Updates the number of active jobs in the main application window"""
         self.window().updateActiveJobs()
 
     def sendRemoveItem(self):
+        """Emits a signal for this JobWidget to be removed from the Job Manager"""
         self.removeMeSignal.emit(self.id)
 
     def sendCancelWorker(self):
+        """Attempts to cancel the Job which was sent to `QThreadPool.globalInstance()`"""
         if QThreadPool.globalInstance().tryTake(self.worker):
             self.finalize(id=self.id, cancelled=True, cleanup=self.allow_cleanup)
         else:
@@ -142,6 +150,10 @@ class WorkerWidget(QWidget):
 
     # TODO resize jobItem in a job manager class instead so it can be removed from this class
     def adjustSize(self, show):
+        """
+        Resizes this Job Item that resides in the JobManager List,
+        the resizing depends on whether to hide or show more information
+        """
         super().adjustSize()
         if show:
             self.jobItem.setSizeHint(self.sizeHint() - QSize(100, 50))
@@ -150,6 +162,7 @@ class WorkerWidget(QWidget):
 
     @Slot(int)
     def time_worker(self, id):
+        """Starts a timer that is displayed in this Job"""
         if self.id == id:
             self.ui.labelTime.setStyleSheet("QLabel { color: rgb(240, 80, 57); }")
             self.time.start()
@@ -162,15 +175,27 @@ class WorkerWidget(QWidget):
     def finalize(
         self,
         id: int,
-        failed: bool = False,
-        cancelled: bool = False,
-        cleanup: bool = False,
-        logging: bool = False,
+        failed: Optional[bool] = False,
+        cancelled: Optional[bool] = False,
+        cleanup: Optional[bool] = False,
+        logging: Optional[bool] = False,
     ):
         """
-        #TODO Description here
+        Updates this Job to perform actions due to this Job's Worker being finished
 
-        Cleanup can only remove empty directories for safety reasons
+        Parameters
+        ----------
+        id: int
+            The id of the Worker which was completed
+        failed: bool, optional
+            Whether or not the Worker failed
+        cancelled: bool, optional
+            Whether or not the Worker was cancelled
+        cleanup: bool, optional
+            Whether or not to removes the output directory,
+            cleanup can only remove empty directories for safety reasons
+        logging: bool, optional
+            Whether or not to save the redirected output from the Worker as a log
         """
         if self.id == id:
             self.timer.stop()
@@ -202,6 +227,7 @@ class WorkerWidget(QWidget):
 
     @Slot()
     def updateTimerDisplay(self):
+        """Updates the display that shows the Timer"""
         self.ui.labelTime.setText(
             f"{timedelta(milliseconds=self.time.elapsed())}".split(".")[0]
         )

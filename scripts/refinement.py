@@ -1,3 +1,8 @@
+"""
+Script for a dialog window where users can specify parameters for 
+refinement of orientations in an indexed crystal map
+"""
+
 import json
 import warnings
 from os import path
@@ -38,7 +43,27 @@ warnings.filterwarnings("ignore")
 
 
 class RefineSetupDialog(QDialog):
+    """
+    Dialog window where users can specify parameters for refinement 
+    of orientations in an indexed crystal map, using the dataset which
+    the crystal map originated from and master pattern for the correspondig 
+    phases
+    """
     def __init__(self, parent: QMainWindow, file_path: Optional[str] = ""):
+        """
+        Dialog window where users can specify parameters for refinement 
+        of orientations in an indexed crystal map, using the dataset which
+        the crystal map originated from and master pattern for the correspondig 
+        phases
+
+        Parameters
+        ---------
+        parent: QMainWindow
+            The main application window
+        file_path: str, optional
+            The path to a dataset which contains EBSD patterns, *or* a crystal map 
+            which contains indexed orientations
+        """
         super().__init__(parent)
 
         parameter_file, self.xmap_dir = get_setting_file_bottom_top(
@@ -126,6 +151,7 @@ class RefineSetupDialog(QDialog):
         self.savefig_kwds = dict(pad_inches=0, bbox_inches="tight", dpi=150)
 
     def setupConnections(self):
+        """Connects class methods to UI signals"""
         self.ui.buttonBox.accepted.connect(lambda: self.run_refinement())
         self.ui.pushButtonLoadMP.clicked.connect(lambda: self.load_master_pattern())
         self.ui.pushButtonRemoveMP.clicked.connect(lambda: self.remove_master_pattern())
@@ -153,6 +179,7 @@ class RefineSetupDialog(QDialog):
         self.ui.pushButtonChooseOutput.clicked.connect(lambda: self.set_output_directory())
 
     def getOptions(self) -> dict:
+        """Returns the parameters specified by the UI in a dictionary structure"""
         return {
             "mask": self.ui.checkBoxMask.isChecked(),
             "binning": self.ui.comboBoxBinning.currentText(),
@@ -182,7 +209,15 @@ class RefineSetupDialog(QDialog):
 
     def load_parameters(self, signal: LazyEBSD):
         """
-        Read current settings from project_settings.txt, advanced_settings.txt
+        Reads parameters specified by the project of the dataset
+        and the application settings
+
+        Parameters
+        ----------
+        signal: LazyEBSD
+            A preview of the dataset as a lazy loaded EBSD Signal,
+            which is used to derive the microscope and working distance 
+            that were used to obtain the patterns  
         """
         try:
             convention = self.setting_file.read("Convention")
@@ -240,8 +275,20 @@ class RefineSetupDialog(QDialog):
 
     def available_index_data(path: str) -> str:
         """
-        Returns the path of the available index data.
-        If no path is found, retuns an empty string.
+        Checks whether there exist index data associated with the
+        crystal map that was indexed using Hough.
+
+        Parameters
+        ----------
+        path: str
+            The path to the directory which contains the crystal map that
+            may have index data attatched to it
+        
+        Returns
+        -------
+        String
+            The path of the available index data,
+            if no path is found retuns an empty string
         """
         parameter_file: SettingFile = get_setting_file_bottom_top(
             path, "indexing_parameters.txt"
@@ -254,6 +301,7 @@ class RefineSetupDialog(QDialog):
         return ""
 
     def set_output_directory(self, output_path = ""):
+        """Sets the output directory where refined results are stored"""
         fileBrowserOD = FileBrowser(
             mode=FileBrowser.OpenDirectory,
             dirpath=path.dirname(self.xmap_dir),
@@ -269,6 +317,16 @@ class RefineSetupDialog(QDialog):
         self.setAvailableButtons()
 
     def clear_crystal_maps(self, force_clear: Optional[bool] = False):
+        """
+        Clears the currently loaded crystal maps if there are multiple 
+        when switching to single mode, *or* if `force_clear = True`
+
+        Parameters
+        ----------
+        force_clear: bool, optional
+            Whether or not the loaded crystal maps should be cleared regardless
+            of UI state
+        """
         if force_clear or (
             len(self.xmaps) > 1 and self.ui.radioButtonSingleXmap.isChecked()
         ):
@@ -278,6 +336,18 @@ class RefineSetupDialog(QDialog):
             self.updateCrystalMapTable()
 
     def load_crystal_maps(self, xmap_path: Optional[str] = None, force_clear=False):
+        """
+        Load one or multiple crystal maps, depending on the state of the UI
+        
+        Parameters
+        ----------
+        xmap_path: str, optional
+            The path to the crystal map which should be loaded, if no path is given
+            a dialog window appears to let the user select a crystal map
+        force_clear: bool, optional
+            Whether or not the loaded crystal maps should be cleared regardless
+            of UI state
+        """
         if xmap_path is not None:
             try:
                 xmap_name = path.basename(xmap_path)
@@ -313,7 +383,7 @@ class RefineSetupDialog(QDialog):
 
     def remove_crystal_maps(self):
         """
-        Removes selected rows from tableWidgetXmap
+        Removes the selected rows from the crystal map table
         """
         xmapTable = self.ui.tableWidgetXmap
         indexes = xmapTable.selectionModel().selectedRows()
@@ -328,6 +398,15 @@ class RefineSetupDialog(QDialog):
         self.updateCrystalMapTable()
 
     def load_master_pattern(self, mp_path: Optional[str] = None):
+        """
+        Load one or multiple master patterns
+        
+        Parameters
+        ----------
+        mp_path: str, optional
+            The path to the master pattern which should be loaded, if no path is given
+            a dialog window appears to let the user select one or multiple master patterns
+        """
         if mp_path is not None:
             try:
                 mp_preview: LazyEBSDMasterPattern = kp.load(
@@ -388,6 +467,10 @@ class RefineSetupDialog(QDialog):
 
     def updateMasterPatternTable(self):
         """
+        Updates the display of the master pattern table 
+
+        Constants
+        ---------
         NAME_COL = 0
         NUMBER_COL = 1
         ISS_COL = 2
@@ -418,6 +501,15 @@ class RefineSetupDialog(QDialog):
         self.setAvailableButtons()
 
     def updateCrystalMapTable(self):
+        """
+        Updates the display of the crystal map table
+
+        Constants
+        ---------
+        FILE_NAME_COL = 0
+        PHASE_NAME_COL = 1
+        ORIENTATIONS_COL = 2
+        """
         if self.ui.radioButtonMultipleXmap.isChecked():
             self.ui.labelXmapPath.setText("Multiple crystal maps")
         else:
@@ -453,7 +545,7 @@ class RefineSetupDialog(QDialog):
 
     def remove_master_pattern(self):
         """
-        Removes selected rows of master patterns from tableWidgetMP
+        Removes selected rows from the master pattern table
         """
         tableMP = self.ui.tableWidgetMP
         indexes = tableMP.selectionModel().selectedRows()
@@ -466,6 +558,7 @@ class RefineSetupDialog(QDialog):
         self.setAvailableButtons()
 
     def setAvailableButtons(self):
+        """Sets whether buttons are enabled or disabled depending on state"""
         ok_flag = False
         phase_map_flag = False
         add_phase_flag = True
@@ -492,6 +585,23 @@ class RefineSetupDialog(QDialog):
         self.ui.checkBoxData.setChecked(index_data)
 
     def getBinningShapes(self, signal: LazyEBSD) -> dict:
+        """
+        Calculates and returns a dictionary of available binning options
+        depending on the pattern resolution in the `signal` parameter
+
+        Parameters
+        ----------
+        signal: LazyEBSD
+            The EBSD signal which the dictionary of binning sizes should be 
+            generated from
+        
+        Returns
+        -------
+        dict[str, tuple[int, int]]
+            Key is the binning integer as a string, and resulting binning resolution
+            is specified as two intengers in a tuple
+        
+        """
         sig_shape = signal.axes_manager.signal_shape[::-1]
         self.ui.labelOriginalSignalShape.setText(f"{sig_shape} px")
         binnings: dict = {"None": sig_shape}
@@ -502,11 +612,30 @@ class RefineSetupDialog(QDialog):
 
     def refine_orientations(
         self,
-        s: EBSD,
+        s: EBSD | LazyEBSD,
         xmaps: dict[str, CrystalMap],
         master_patterns: dict[str, LazyEBSDMasterPattern],
         options: dict,
     ):
+        """
+        Performs refinemnet of orientations on all crystal maps in `xmaps`,
+        by using the experimental signal `s` and the master patterns in
+        `master_patterns`
+
+        Resulting crystal maps are saved to the specified output folder
+
+        Parameters
+        ----------
+        s: EBSD, LazyEBSD
+            The loaded EBSD signal which contains patterns that `xmaps`
+            originated from
+        xmaps: dict[str, CrystalMap]
+            Ccontains the crystal maps which should be refined
+        master_patterns: dict[str, LazyEBSDMasterPattern]
+            Contains master patterns that is used to refine orientations
+        options: dict
+            Contains parameters specified by the UI 
+        """
         binning = eval(options["binning"])
         pc = options["pc"]
         convention = options["convention"]
@@ -611,6 +740,14 @@ class RefineSetupDialog(QDialog):
         print(f"Finished refining orientations")
 
     def run_refinement(self):
+        """
+        Loads the dataset, if index data is selected generate crystal maps from the data,
+        checks whether phase structures are compatible and if not prompt the user with an
+        override dialog,
+
+        When there are no phase conflicts between phases and master patterns, sends the
+        `scripts.refinement.RefineSetupDialog.refine_orientations` method to the Job Manager
+        """
         options = self.getOptions()
         try:
             s: EBSD = kp.load(self.pattern_path, lazy=options["lazy"])
@@ -678,6 +815,23 @@ class RefineSetupDialog(QDialog):
         )
 
     def promptOverridePhase(self, message) -> bool:
+        """
+        Prompts the user with a warning displaying what part of the strcture of a phase
+        in a crystal map that contains conflicts with the master pattern used to refine 
+        orientations
+
+        Parameters
+        ----------
+        message: str
+            The message that is displayed in the prompt
+            
+        Returns
+        -------
+        Bool
+            Whether or not the phase strcutre should be overriden,
+            depends on the user's input in the prompt
+
+        """
         reply = QMessageBox(self).information(
             self,
             "Warning Phase conflict",
@@ -693,6 +847,11 @@ class RefineSetupDialog(QDialog):
     def save_quality_metrics(self, xmap):
         """
         Save plots of quality metrics
+
+        Parameters
+        ----------
+        xmap : CrystalMap
+            The crystal map which the quality metrics originates from
         """
         print("Saving quality metric for combined map ...")
         aspect_ratio = xmap.shape[1] / xmap.shape[0]
@@ -714,7 +873,12 @@ class RefineSetupDialog(QDialog):
 
     def save_phase_map(self, xmap):
         """
-        Plot phase map
+        Save plot of phase map
+
+        Parameters
+        ----------
+        xmap : CrystalMap
+            The crystal map which the phases originates from
         """
         print("Saving phase map ...")
         fig = xmap.plot(return_figure=True, remove_padding=True)
@@ -729,7 +893,7 @@ class RefineSetupDialog(QDialog):
         ckey_overlay: Optional[bool] = False,
     ):
         """
-        Plot inverse pole figure map with orientation colour key
+        Save plot of inverse pole figure map and orientation colour key
 
         Parameters
         ----------
@@ -762,6 +926,17 @@ class RefineSetupDialog(QDialog):
         fig.savefig(path.join(self.output_dir, "IPF_refined.png"), **self.savefig_kwds)
 
     def save_ncc_map(self, xmap: CrystalMap):
+        """
+        Saves the normalized cross-correlation map of `xmap` as an image
+
+        NCC scores are accesed differently depending on whether the xmap is the result 
+        of multiple merged crystal maps 
+
+        Parameters
+        ----------
+        xmap : CrystalMap
+            The crystal map which contains normalized cross-correlation scores
+        """
         if len(xmap.phases.ids) == 1:
             fig = xmap.plot(
                 "scores",

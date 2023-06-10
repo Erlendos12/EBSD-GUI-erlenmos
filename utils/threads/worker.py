@@ -1,3 +1,6 @@
+"""
+Utiltiy for creating a Worker that performs a function of choice inside a thread
+"""
 from typing import Callable
 from contextlib import redirect_stderr, redirect_stdout
 
@@ -68,6 +71,7 @@ class Worker(QRunnable, QObject):
         self.setupConnections()
 
     def setupConnections(self):
+        """Connects class signals to methods in class and parent"""
         self.thdout.outputLine.connect(self.write_line)
         self.thdout.outputError.connect(self.write_error)
         self.isStarted.connect(self.parent().updateActiveJobs)

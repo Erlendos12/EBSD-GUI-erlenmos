@@ -2,15 +2,15 @@
 Interactive console widget.  Use to add an interactive python interpreter
 in a GUI application.
 
-Original code created by deanhystad, sourcecode from https://python-forum.io/thread-25117.html
+Original code created by deanhystad, source code available at https://python-forum.io/thread-25117.html
 """
 import code
 import re
+from typing import Optional, Any
 
 import PySide6.QtCore as QtCore
 import PySide6.QtGui as QtGui
 import PySide6.QtWidgets as QtWidgets
-
 
 class LineEdit(QtWidgets.QLineEdit):
     """
@@ -33,8 +33,8 @@ class LineEdit(QtWidgets.QLineEdit):
         Parameters
         ----------
         parent : QWidget
-            The widget which contains the console widget
-        history : int
+            The parent widget which contains the console widget
+        history : int, Optional
             The max number of lines in the history buffer
         """
         super().__init__(parent=parent)
@@ -108,8 +108,8 @@ class Console(QtWidgets.QWidget):
 
     def __init__(
         self,
-        parent,
-        context,
+        parent: QtWidgets.QWidget,
+        context: dict[str, Any],
         history: int = 20,
         blockcount: int = 500,
     ) -> "Console":
@@ -122,9 +122,9 @@ class Console(QtWidgets.QWidget):
             The widget which contains the console widget
         context : dict[str, Any]
             Specifies the dictionary in which code will be executed
-        history : int
+        history : int, optional
             The max number of lines in the history buffer
-        blockcount : int
+        blockcount : int, optional
             The max number of lines in the output buffer
         """
         super().__init__()
@@ -156,8 +156,16 @@ class Console(QtWidgets.QWidget):
         self.inpedit.setFrame(False)
         # self.setfont(QtGui.QFont.StyleHint.Monospace)
 
-    def setcontext(self, context):
-        """Set context for interpreter"""
+    def setcontext(self, context: dict[str, Any]):
+        """
+        Set context for interpreter
+
+        Parameters
+        ----------
+        context : dict[str, Any]
+            Specifies the dictionary in which code will be executed
+            """
+        
         self.interp = code.InteractiveInterpreter(context)
 
     def resetbuffer(self) -> None:
@@ -165,9 +173,11 @@ class Console(QtWidgets.QWidget):
         self.buffer = []
 
     def setprompt(self, text: str):
+        """Sets the prompt of the output line"""
         self.prompt = text
 
     def flush(self):
+        """Dummy function to allow reciving of progressbars from kikuchipy"""
         pass
 
     def push(self, line: str) -> None:
@@ -196,6 +206,7 @@ class Console(QtWidgets.QWidget):
         self.inpedit.setFont(font)
 
     def setscrollbarmax(self) -> None:
+        """Sets the scrollbar of the output display to max"""
         sb = self.outdisplay.verticalScrollBar()
         sb.setValue(sb.maximum())
 

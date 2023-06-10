@@ -1,11 +1,15 @@
+"""Utility for accessing a File Browser that is native to the OS"""
 import os
 import sys
+from typing import Optional
 
 from PySide6.QtCore import QDir
 from PySide6.QtWidgets import QFileDialog, QWidget
 
 
 class FileBrowser(QWidget):
+    """Utility for accessing a File Browser that is native to the OS"""
+
     OpenFile = 0
     OpenFiles = 1
     OpenDirectory = 2
@@ -13,11 +17,27 @@ class FileBrowser(QWidget):
 
     def __init__(
         self,
-        mode=OpenFile,
-        dirpath=QDir.currentPath(),
-        filter_name="All files (*.*)",
-        caption=None,
+        mode: Optional[int] = OpenFile,
+        dirpath: Optional[str] = QDir.currentPath(),
+        filter_name: Optional[str] = "All files (*.*)",
+        caption: Optional[str] | None = None,
     ):
+        """
+        Utility for accessing a File Browser that is native to the OS
+
+        Parameters
+        ----------
+        mode: int, optional
+            The mode of the File Browser, which may be either OpenFile,
+            OpenFiles, OpenDirectory, or SaveFile
+        dirpath: str, optional
+            The directory that is first shown in the File Browser
+        filter_name: str, optional
+            The filter that includes file extentions, which decides what
+            files are shown, *or* allowed to be saved.
+        caption: str, optional
+            The title of the File Browser window
+        """
         QWidget.__init__(self)
         self.browser_mode = mode
         if os.path.exists(dirpath):
@@ -27,22 +47,35 @@ class FileBrowser(QWidget):
         self.filter_name = filter_name
         self.caption = caption
 
-    def setMode(self, browser_mode):
+    def setMode(self, browser_mode: int):
+        """
+        Sets the mode, which may be either OpenFile, OpenFiles, 
+        OpenDirectory, or SaveFile
+        """
         self.browser_mode = browser_mode
 
-    def setFileFilter(self, text):
+    def setFileFilter(self, text: str):
+        """Sets the filter of file extentions """
         self.filter_name = text
 
-    def setDefaultDir(self, path):
+    def setDefaultDir(self, path: str):
+        """Sets the default directory if the path exsits"""
         if os.path.exists(path):
             self.dirpath = path
 
     def setCaption(self, caption):
+        """Sets the title of the File Browser window"""
         self.caption = caption
 
     def getFile(self) -> int:
         """
-        Method returns 1 if one or more paths are set. Abort/ cancel returns 0
+        Prompts the user with the File Browser window in the 
+        currently set mode
+
+        Returns
+        -------
+        int
+            1 if one or more paths are set. Abort/ cancel returns 0
         """
         cap = self.caption
         self.filepaths: list[str] = []
@@ -88,4 +121,13 @@ class FileBrowser(QWidget):
         return 1
 
     def getPaths(self) -> list[str]:
+        """
+        Get the path which was last set by the 
+        `utils.filebrowser.FileBrowser.getFile` method
+
+        Returns
+        -------
+        List[str]
+            A list which contains all the paths that were set
+        """
         return self.filepaths

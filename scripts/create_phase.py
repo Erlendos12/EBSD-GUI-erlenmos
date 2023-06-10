@@ -16,7 +16,7 @@ class NewPhaseDialog(QDialog):
     Dialog window where users can create a phase with custom structure
     """
 
-    def __init__(self, parent: QWidget, default_color=None) -> None:
+    def __init__(self, parent: QWidget, default_color: Optional[str] = None) -> None:
         """
         Dialog window where users can create a phase with custom structure
 
@@ -24,8 +24,8 @@ class NewPhaseDialog(QDialog):
         ----------
         parent : QWidget
             The parent widget
-        default_color : str
-            The color which is assigned to the phase if none is specified
+        default_color : str, optional
+            The color which is assigned to the phase
         """
         super().__init__(parent)
         self.ui = Ui_NewPhaseDialog()
@@ -35,6 +35,7 @@ class NewPhaseDialog(QDialog):
         self.default_color = default_color
 
     def setupConnections(self):
+        """Connects class methods to UI signals"""
         self.ui.buttonBox.accepted.connect(self.validatePhaseParameters)
         self.ui.pushButtonAddAtom.clicked.connect(self.addEmptyAtom)
         self.ui.pushButtonRemoveAtom.clicked.connect(self.removeAtom)
@@ -43,10 +44,8 @@ class NewPhaseDialog(QDialog):
             lambda toggle: self.setAtomButtons(toggle)
         )
 
-    def setAtomButtons(self, structure_enabled=True):
-        """
-        Enables/ disables the ability to remove atoms from the table
-        """
+    def setAtomButtons(self, structure_enabled: Optional[bool] = True):
+        """Enables/ disables the ability to remove atoms from the table"""
         remove = self.ui.pushButtonRemoveAtom
         atomsTable = self.ui.tableWidgetAtoms
         if not structure_enabled:
@@ -169,9 +168,9 @@ class NewPhaseDialog(QDialog):
         space_group: int,
         structure: Optional[Structure] = None,
         color: Optional[str] = "",
-    ):
+    ) -> Phase:
         """
-        Returns a phase which contains the input parameters
+        Returns a phase which contains the input parameters from the UI
 
         Parameters
         ----------
@@ -183,9 +182,9 @@ class NewPhaseDialog(QDialog):
             Structure object of the phase.
             If none is given, a default strucutre object is used
             in the returned phase.
-        color:
+        color: str
             The color which is assigned to the phase.
-        
+
         Returns
         -------
         Phase

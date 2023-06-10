@@ -1,3 +1,7 @@
+"""
+Script which defines the System Explorer widget which resides in the main
+application window
+"""
 import gc
 import os.path as path
 import platform
@@ -21,7 +25,12 @@ from ui.ui_system_explorer_widget import Ui_SystemExplorerWidget
 
 
 class SystemExplorerWidget(QWidget):
-    # TODO Load this from advanced_settings
+    """
+    Widget for a System Explorer that may show a hierarchy of files which are 
+    stored locally
+    """
+
+    # TODO Load this directly from the application settings
     SYSTEM_VIEW_FILTER = (
         "*.h5",
         "*.dat",
@@ -38,6 +47,24 @@ class SystemExplorerWidget(QWidget):
     requestImageViewer = Signal(str)
 
     def __init__(self, parent: Optional[QWidget] = ...) -> None:
+        """
+        Widget for a System Explorer that may show a hierarchy of files which 
+        are stored locally
+
+        Parameters
+        ----------
+        parent: QWidget
+            A QtWidget which is regareded as the parent of the System Explorer
+
+        Attributes
+        ----------
+        pathChanged: Signal[str]
+            Emits the new selected path whenever the path is changed
+        requestSignalNavigation: Signal[str]
+            Emits the path of the file that should be shown in the Signal Navigation widget
+        requestImageViewer: Signal[str]
+            Emits the path of the file that should be shown in the Image Viewer widget
+        """
         super().__init__(parent)
         self.ui = Ui_SystemExplorerWidget()
         self.ui.setupUi(self)
@@ -49,6 +76,8 @@ class SystemExplorerWidget(QWidget):
         self.setupConnections()
 
     def setupConnections(self):
+        """Connects class methods to UI signals"""
+
         self.ui.systemViewer.setModel(self.systemModel)
         self.ui.systemViewer.selectionModel().selectionChanged.connect(
             lambda new, old: self.onSystemModelChanged(new, old)
@@ -63,6 +92,17 @@ class SystemExplorerWidget(QWidget):
     def setSystemViewer(
         self, working_dir: str, filters: Optional[Sequence[str]] = SYSTEM_VIEW_FILTER
     ):
+        """
+        Sets the folder that is displayed in the System Viewer with a file filter applied
+
+        Parameters
+        ----------
+        working_dir: str
+            The path of the directory that is shown
+        filters: Sequence[str], optional
+            A sequence of strings that specify file extentions to show,
+            if none is specified use default values
+        """
         self.selected_path = ""
         self.systemModel.setRootPath(working_dir)
         self.systemModel.setNameFilters(filters)
@@ -75,6 +115,10 @@ class SystemExplorerWidget(QWidget):
         self.app.setWindowTitle(f"EBSP Indexer - {working_dir}")
 
     def contextMenu(self):
+        """
+        Displays a menu of options which depends on the type of class
+        that the selected_path implies
+        """
         menu = QMenu()
         menu_path = self.selected_path
         menu.setCursor(Qt.PointingHandCursor)
@@ -142,6 +186,14 @@ class SystemExplorerWidget(QWidget):
         menu.exec(cursor.pos())
 
     def displayDeleteWarning(self, deletion_path):
+        """
+        Displays a confirmation prompt to the user about deleting a file *or* a folder
+        
+        Parameters
+        ----------
+        deletion_path: str
+            The path to the file *or* folder that is to be deleted
+        """
         reply = QMessageBox.question(
             self,
             f"Delete {path.basename(deletion_path)}",
@@ -153,6 +205,14 @@ class SystemExplorerWidget(QWidget):
             self.deleteSelected(deletion_path)
 
     def deleteSelected(self, deletion_path):
+        """
+        Deletes a file *or* a folder
+
+        Parameters
+        ----------
+        deletion_path: str
+            The path to the file *or* folder that is being deleted
+        """
         if path.isdir(deletion_path):
             result = self.systemModel.rmdir(self.ui.systemViewer.currentIndex())
             if not result:
@@ -162,7 +222,17 @@ class SystemExplorerWidget(QWidget):
             result = self.systemModel.remove(self.ui.systemViewer.currentIndex())
         self.ui.systemViewer.selectionModel().clearCurrentIndex()
 
-    def onSystemModelChanged(self, new_selected, old_selected):
+    def onSystemModelChanged(self, new_selected: str, old_selected: str):
+        """
+        Emits the `self.pathChanged` signal with a new selected path
+
+        Parameters
+        ----------
+        new_selected: str
+            The new path selected
+        old_selected: str
+            The previously selected path which is replaced
+        """
         if new_selected == old_selected:
             return
         if new_selected.empty():
@@ -174,6 +244,10 @@ class SystemExplorerWidget(QWidget):
         self.pathChanged.emit(self.selected_path)
 
     def doubleClickEvent(self):
+        """
+        Emits one or more signals depending on the type of file that
+        was double clicked
+        """
         index = self.ui.systemViewer.currentIndex()
         self.selected_path = self.systemModel.filePath(index)
         ext = path.splitext(self.selected_path)[1]
@@ -182,13 +256,21 @@ class SystemExplorerWidget(QWidget):
                 subprocess.call(["open", "-a", "TextEdit", self.selected_path])
             if platform.system().lower() == "windows":
                 startfile(self.selected_path)
-        # TODO: more functionality, open dataset for signal navigation
         elif ext in self.KP_EXTENSIONS:
             self.requestSignalNavigation.emit(self.selected_path)
         elif ext in self.IMAGE_EXTENSIONS:
             self.requestImageViewer.emit(self.selected_path)
 
-def revealInExplorer(revealed_path):
+def revealInExplorer(revealed_path: str):
+    """
+    Reveals a path in the File Explorer that is native to the OS
+    
+    Parameters
+    ----------
+    revealed_path: str
+        The path to the folder or file that is to be revealed 
+    
+    """
     if path.isdir(revealed_path):
         webbrowser.open(revealed_path)
     elif path.isfile(revealed_path):
@@ -197,7 +279,15 @@ def revealInExplorer(revealed_path):
         webbrowser.open()
 
 def openTxtFile(txt_path: str):
-        if platform.system().lower() == "darwin":
-            subprocess.call(["open", "-a", "TextEdit", txt_path])
-        if platform.system().lower() == "windows":
-            startfile(txt_path)
+    """
+    Opens a file in the OS's default software for inspecting text
+    
+    Parameters
+    ----------
+    txt_path: str
+        The path to the file that is to be opened 
+    """
+    if platform.system().lower() == "darwin":
+        subprocess.call(["open", "-a", "TextEdit", txt_path])
+    if platform.system().lower() == "windows":
+        startfile(txt_path)

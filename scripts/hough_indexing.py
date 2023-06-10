@@ -1,8 +1,10 @@
+"""Script for a dialog window where users can specify parameters for Hough Indexing"""
+
 import json
 import warnings
 from datetime import date
 from os import mkdir, path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Tuple
 
 import kikuchipy as kp
 import matplotlib as mpl
@@ -25,10 +27,25 @@ from utils import FileBrowser, SettingFile, sendToJobManager
 # Ignore warnings to avoid crash with integrated console
 warnings.filterwarnings("ignore")
 
-ALLOWED_SPACE_GROUPS = ["Fm-3m", "Im-3m"] # FCC and BCC
+ALLOWED_SPACE_GROUPS = ["Fm-3m", "Im-3m"]  # FCC and BCC
+
 
 class HiSetupDialog(QDialog):
+    """
+    Dialog window where users can specify parameters for Hough Indexing
+    """
+
     def __init__(self, parent: QMainWindow, pattern_path: str):
+        """
+        Dialog window where users can specify parameters for Hough Indexing
+
+        Parameters
+        ---------
+        parent: QMainWindow
+            The main application window
+        pattern_path: str
+            The path to the dataset that is to be indexed
+        """
         super().__init__(parent)
         self.pattern_path = pattern_path
         self.pattern_name = path.basename(pattern_path)
@@ -64,6 +81,7 @@ class HiSetupDialog(QDialog):
         self.savefig_kwds = dict(pad_inches=0, bbox_inches="tight", dpi=150)
 
     def setupConnections(self):
+        """Connects class methods to UI signals"""
         self.ui.buttonBox.accepted.connect(lambda: self.run_hough_indexing())
         self.ui.buttonBox.rejected.connect(lambda: self.reject())
         self.ui.pushButtonCreatePhase.clicked.connect(lambda: self.create_phase())
@@ -82,6 +100,7 @@ class HiSetupDialog(QDialog):
         self.ui.comboBoxBinning.addItems(self.binnings.keys())
 
     def getOptions(self) -> dict:
+        """Returns the parameters specified by the UI in a dictionary structure"""
         return {
             "binning": self.ui.comboBoxBinning.currentText(),
             "bands": self.ui.spinBoxBands.value(),
@@ -107,7 +126,17 @@ class HiSetupDialog(QDialog):
         }
 
     def load_parameters(self, signal: LazyEBSD):
-        # Read current setting from project_settings.txt, advanced_settings.txt
+        """
+        Reads parameters specified by the project of the dataset
+        and the application settings
+
+        Parameters
+        ----------
+        signal: LazyEBSD
+            A preview of the dataset as a lazy loaded EBSD Signal,
+            which is used to derive the microscope and working distance 
+            that were used to obtain the patterns  
+        """
         self.setting_file = SettingFile(
             path.join(self.working_dir, "project_settings.txt")
         )
@@ -187,6 +216,7 @@ class HiSetupDialog(QDialog):
                 break
 
     def save_parameters(self):
+        """Writes parameters to the project of the dataset"""
         self.setting_file.delete_all_entries()  # Clean up initial dictionary
         options = self.getOptions()
         master_idx = 1
@@ -215,6 +245,17 @@ class HiSetupDialog(QDialog):
         self.setting_file.save()
 
     def load_master_pattern_phase(self, mp_path: Optional[str] = None):
+        """
+        Loads the phase of a mastter pattern file
+
+        Parameters
+        ----------
+        mp_path: str, optional
+            The path to the master pattern which should be loaded,
+            if none is given a file dialog appears where the user
+            may choose the file
+
+        """
         if mp_path is not None:
             try:
                 mp = kp.load(mp_path, lazy=True)
@@ -247,6 +288,12 @@ class HiSetupDialog(QDialog):
         structure: Structure = None,
         color: str = "",
     ):
+        """
+        Loads a phase directly from the method's input parameters,
+        which is used to load a phase specified by the dialog from
+        `scripts.create_phase`
+
+        """
         if not len(color):
             color = self.colors[len(self.phases.ids) - 1]
         try:
@@ -266,6 +313,7 @@ class HiSetupDialog(QDialog):
         self.updatePhaseTable()
 
     def create_phase(self):
+        """Opens the dialog window from `scripts.create_phase` for specifying custom phases"""
         newPhaseDialog = NewPhaseDialog(self, self.colors[len(self.phases.ids)])
         if newPhaseDialog.exec() == QDialog.Accepted:
             self.phases.add(newPhaseDialog.get_phase(**newPhaseDialog.kwargs))
@@ -273,11 +321,15 @@ class HiSetupDialog(QDialog):
 
     def updatePhaseTable(self):
         """
-        NAME_COL = 0
-        NUMBER_COL = 1
-        ISS_COL = 2
-        CRYSTAL_COL = 3
-        COLOR_COL = 4
+        Updates the display of the phase table 
+
+        Constants
+        ---------
+        NAME_COL = 0,
+        NUMBER_COL = 1,
+        ISS_COL = 2,
+        CRYSTAL_COL = 3,
+        COLOR_COL = 4,
         """
         phasesTable = self.ui.tableWidgetPhase
         phasesTable.setRowCount(len(self.phases.ids))
@@ -318,6 +370,7 @@ class HiSetupDialog(QDialog):
         self.updatePhaseTable()
 
     def setAvailableButtons(self):
+        """Sets whether buttons are enabled or disabled depending on state"""
         display_message = False
         message = ""
         ok_flag = False
@@ -347,7 +400,24 @@ class HiSetupDialog(QDialog):
         self.ui.labelMessage.setVisible(display_message)
         self.ui.labelMessage.setText(message)
 
-    def getBinningShapes(self, signal: LazyEBSD) -> dict:
+    def getBinningShapes(self, signal: LazyEBSD) -> dict[str, tuple[int, int]]:
+        """
+        Calculates and returns a dictionary of available binning options
+        depending on the pattern resolution in the `signal` parameter
+
+        Parameters
+        ----------
+        signal: LazyEBSD
+            The EBSD signal which the dictionary of binning sizes should be 
+            generated from
+        
+        Returns
+        -------
+        dict[str, tuple[int, int]]
+            Key is the binning integer as a string, and resulting binning resolution
+            is specified as two intengers in a tuple
+        
+        """
         sig_shape = signal.axes_manager.signal_shape[::-1]
         self.ui.labelOriginalSignalShape.setText(f"{sig_shape} px")
         binnings: dict = {"None": sig_shape}
@@ -356,7 +426,20 @@ class HiSetupDialog(QDialog):
                 binnings[f"{num}"] = (int(sig_shape[0] / num), int(sig_shape[1] / num))
         return binnings
 
-    def hough_indexing(self, s):
+    def hough_indexing(self, s: EBSD | LazyEBSD):
+        """
+        Performs Hough Indexing of the loaded signal `s`, 
+        with parameters specified by the dialog window
+
+        Resulting crystal maps are saved to a folder named hi_results,
+        which is placed in the same location as the dataset
+
+        Parameters
+        ----------
+        s: EBSD, LazyEBSD
+            The loaded EBSD signal which contains patterns to be indexed
+
+        """
         options = self.getOptions()
         self.rho_mask = (100.0 - options["rho"]) / 100.0
         self.number_bands = options["bands"]
@@ -440,6 +523,10 @@ class HiSetupDialog(QDialog):
         print(f"Finished indexing {self.pattern_name}")
 
     def run_hough_indexing(self):
+        """
+        Loads the dataset, creates an output directory, and sends the
+        `scripts.hough_indexing.HiSetupDialog.hough_indexing` method to the Job Manager
+        """
         for i in range(1, 100):
             try:
                 self.dir_out = path.join(self.working_dir, "hi_results_" + str(i))
@@ -466,6 +553,11 @@ class HiSetupDialog(QDialog):
     def save_quality_metrics(self, xmap):
         """
         Save plots of quality metrics
+
+        Parameters
+        ----------
+        xmap : CrystalMap
+            The crystal map which the quality metrics originates from
         """
         print("Saving quality metric for combined map ...")
         aspect_ratio = xmap.shape[1] / xmap.shape[0]
@@ -487,7 +579,12 @@ class HiSetupDialog(QDialog):
 
     def save_phase_map(self, xmap):
         """
-        Plot phase map
+        Save plot of phase map
+
+        Parameters
+        ----------
+        xmap : CrystalMap
+            The crystal map which the phases originates from
         """
         print("Saving phase map ...")
         fig = xmap.plot(return_figure=True, remove_padding=True)
@@ -500,7 +597,7 @@ class HiSetupDialog(QDialog):
         ckey_overlay: Optional[bool] = False,
     ):
         """
-        Plot inverse pole figure map with orientation colour key
+        Save plot of inverse pole figure map and orientation colour key
 
         Parameters
         ----------
@@ -546,7 +643,13 @@ def log_hi_parameters(
     index_data_path=None,
 ):
     """
+    Logs and saves additional parameters, which were used during indexing,
+    to hi_results/indexing_parameters.txt
+
     Assumes convention is BRUKER for pattern center if none is given
+
+    TODO: This method may be used to develop an utility for future logging,
+    and is why it is currently not a class method.
     """
 
     log = SettingFile(path.join(dir_out, "indexing_parameters.txt"))

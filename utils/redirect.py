@@ -1,10 +1,9 @@
+"Utility for mapping self.write to a function of choice"
 from typing import Callable
 
 class Redirect:
     """
     Maps self.write to a function of choice
-    
-    ...
 
     Attributes
     ----------
